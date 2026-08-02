@@ -278,7 +278,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => app.should_quit = true,
+                        KeyCode::Char('q') => app.should_quit = true,
+                        KeyCode::Esc if app.show_help => app.show_help = false,
                         KeyCode::Char(' ') => app.toggle_bit(),
                         KeyCode::Char('r') => app.randomize_bits(),
                         KeyCode::Char('c') => app.clear_bits(),
@@ -286,7 +287,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         KeyCode::Char('a') => app.cycle_art(),
                         KeyCode::Char('?') => app.show_help = !app.show_help,
                         KeyCode::Tab => app.cycle_network(),
-                        KeyCode::Char('\\') => app.toggle_info(),
+                        KeyCode::Char('\\') | KeyCode::Char('|') => app.toggle_info(),
                         KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
                         KeyCode::Right | KeyCode::Char('l') => app.move_cursor(1, 0),
                         KeyCode::Up | KeyCode::Char('k') => app.move_cursor(0, -1),
@@ -552,14 +553,15 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from(" SHORTCUTS "),
             Line::from("  ?      Toggle this help panel "),
             Line::from("  Tab    Cycle network profile "),
-            Line::from("  \\      Toggle extra info "),
+            Line::from("  \\ / |  Toggle extra info "),
             Line::from("  r      Randomize a valid secret "),
             Line::from("  f      Fill the entire grid "),
             Line::from("  c      Clear the grid "),
             Line::from("  Space  Flip the selected bit "),
             Line::from("  hjkl   Move the cursor "),
-            Line::from("  q/Esc  Quit "),
-        ])
+            Line::from("  Esc    Close help "),
+            Line::from("  q      Quit "),
+        ]);
         .block(Block::default().borders(Borders::ALL).title(" Help "))
         .alignment(Alignment::Left)
         .style(Style::default().fg(Color::White));
