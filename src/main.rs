@@ -277,24 +277,35 @@ fn main() -> Result<(), Box<dyn Error>> {
         if event::poll(Duration::from_millis(50))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    match key.code {
-                        KeyCode::Char('q') => app.should_quit = true,
-                        KeyCode::Esc if app.show_help => app.show_help = false,
-                        KeyCode::Char(' ') => app.toggle_bit(),
-                        KeyCode::Char('r') => app.randomize_bits(),
-                        KeyCode::Char('c') => app.clear_bits(),
-                        KeyCode::Char('f') => app.fill_bits(),
-                        KeyCode::Char('a') => app.cycle_art(),
-                        KeyCode::Char('?') => app.show_help = !app.show_help,
-                        KeyCode::Tab => app.cycle_network(),
-                        KeyCode::Char('\\') | KeyCode::Char('|') | KeyCode::Char('i') => {
-                            app.toggle_info()
+                    if app.show_info {
+                        match key.code {
+                            KeyCode::Char('q') => app.should_quit = true,
+                            KeyCode::Esc
+                            | KeyCode::Char('\\')
+                            | KeyCode::Char('|')
+                            | KeyCode::Char('i') => app.toggle_info(),
+                            _ => {}
                         }
-                        KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
-                        KeyCode::Right | KeyCode::Char('l') => app.move_cursor(1, 0),
-                        KeyCode::Up | KeyCode::Char('k') => app.move_cursor(0, -1),
-                        KeyCode::Down | KeyCode::Char('j') => app.move_cursor(0, 1),
-                        _ => {}
+                    } else {
+                        match key.code {
+                            KeyCode::Char('q') => app.should_quit = true,
+                            KeyCode::Esc if app.show_help => app.show_help = false,
+                            KeyCode::Char(' ') => app.toggle_bit(),
+                            KeyCode::Char('r') => app.randomize_bits(),
+                            KeyCode::Char('c') => app.clear_bits(),
+                            KeyCode::Char('f') => app.fill_bits(),
+                            KeyCode::Char('a') => app.cycle_art(),
+                            KeyCode::Char('?') => app.show_help = !app.show_help,
+                            KeyCode::Tab => app.cycle_network(),
+                            KeyCode::Char('\\') | KeyCode::Char('|') | KeyCode::Char('i') => {
+                                app.toggle_info()
+                            }
+                            KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
+                            KeyCode::Right | KeyCode::Char('l') => app.move_cursor(1, 0),
+                            KeyCode::Up | KeyCode::Char('k') => app.move_cursor(0, -1),
+                            KeyCode::Down | KeyCode::Char('j') => app.move_cursor(0, 1),
+                            _ => {}
+                        }
                     }
                 }
             }
@@ -322,11 +333,6 @@ fn ui(f: &mut Frame, app: &mut App) {
         ])
         .split(f.size());
 
-    let body_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
-        .split(chunks[1]);
-
     let byte_idx = app.cursor / 8;
     let bit_idx = 7 - (app.cursor % 8);
     let header_text = format!(
@@ -346,8 +352,8 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_block = Block::default()
         .borders(Borders::ALL)
         .title(" 16x16 Bit Grid (256 Bits) ");
-    let inner_grid_area = grid_block.inner(body_chunks[0]);
-    f.render_widget(grid_block, body_chunks[0]);
+    let inner_grid_area = grid_block.inner(chunks[1]);
+    f.render_widget(grid_block, chunks[1]);
 
     let mut grid_lines = Vec::new();
     for row in 0..16 {
@@ -387,13 +393,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
-    let info_block = Block::default()
-        .borders(Borders::ALL)
-        .title(" Current State ");
-    let info_area = info_block.inner(body_chunks[1]);
-    f.render_widget(info_block, body_chunks[1]);
-
-    let info_lines = match derived {
+    let current_state_lines = match derived {
         Ok(identity) => vec![
             Line::from(vec![
                 Span::styled(
@@ -404,36 +404,6 @@ fn ui(f: &mut Frame, app: &mut App) {
                 ),
                 Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
             ]),
-            Line::from(vec![
-                Span::styled(
-                    "WIF: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(identity.wif, Style::default().fg(Color::White)),
-            ]),
-            if app.show_info {
-                Line::from(vec![
-                    Span::styled(
-                        "MORE INFO: ",
-                        Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled(
-                        format!(
-                            "entropy 256 bits | core {} | bech32 {} | WIF {} | p2wpkh",
-                            app.network.as_bitcoin_network().to_core_arg(),
-                            app.network.bech32_hrp(),
-                            app.network.wif_prefix()
-                        ),
-                        Style::default().fg(Color::White),
-                    ),
-                ])
-            } else {
-                Line::from("")
-            },
             Line::from(vec![
                 Span::styled(
                     "ADDR: ",
@@ -456,35 +426,11 @@ fn ui(f: &mut Frame, app: &mut App) {
                 Span::styled(
                     format!(
                         "pubkey {} | WIF {} | addr {}",
-                        if identity.pubkey_match_ok {
-                            "ok"
-                        } else {
-                            "fail"
-                        },
-                        if identity.wif_roundtrip_ok {
-                            "ok"
-                        } else {
-                            "fail"
-                        },
-                        if identity.address_roundtrip_ok {
-                            "ok"
-                        } else {
-                            "fail"
-                        }
+                        if identity.pubkey_match_ok { "ok" } else { "fail" },
+                        if identity.wif_roundtrip_ok { "ok" } else { "fail" },
+                        if identity.address_roundtrip_ok { "ok" } else { "fail" }
                     ),
                     Style::default().fg(Color::Green),
-                ),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    "PATHS: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
-                    Style::default().fg(Color::White),
                 ),
             ]),
         ],
@@ -498,36 +444,6 @@ fn ui(f: &mut Frame, app: &mut App) {
                 ),
                 Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
             ]),
-            Line::from(vec![
-                Span::styled(
-                    "VERIFY: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(err, Style::default().fg(Color::Red)),
-            ]),
-            if app.show_info {
-                Line::from(vec![
-                    Span::styled(
-                        "MORE INFO: ",
-                        Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled(
-                        format!(
-                            "entropy 256 bits | core {} | bech32 {} | WIF {} | p2wpkh",
-                            app.network.as_bitcoin_network().to_core_arg(),
-                            app.network.bech32_hrp(),
-                            app.network.wif_prefix()
-                        ),
-                        Style::default().fg(Color::White),
-                    ),
-                ])
-            } else {
-                Line::from("")
-            },
             Line::from(vec![
                 Span::styled(
                     "ADDR: ",
@@ -544,39 +460,15 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled("n/a", Style::default().fg(Color::DarkGray)),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    "PATHS: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
-                    Style::default().fg(Color::White),
-                ),
+                Span::styled(err, Style::default().fg(Color::Red)),
             ]),
         ],
     };
 
-    let info_panel = Paragraph::new(info_lines)
+    let state_footer = Paragraph::new(current_state_lines)
         .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Current State "),
-        );
-    f.render_widget(info_panel, info_area);
-
-    let footer = Paragraph::new(vec![Line::from(Span::styled(
-        " [Tab] Cycle network | [\\] Toggle info | [a] Art cycle | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ",
-        Style::default().fg(Color::DarkGray),
-    ))])
-    .alignment(Alignment::Center)
-    .block(Block::default().borders(Borders::ALL).title(" Controls "));
-    f.render_widget(footer, chunks[2]);
+        .block(Block::default().borders(Borders::ALL).title(" Current State "));
+    f.render_widget(state_footer, chunks[2]);
 
     if app.show_info {
         let area = centered_rect(86, 78, f.size());
@@ -585,7 +477,6 @@ fn ui(f: &mut Frame, app: &mut App) {
         let modal = Paragraph::new(vec![
             Line::from(" ENTROPY "),
             Line::from("  Type: hexadecimal "),
-            Line::from("  Time To Crack: centuries "),
             Line::from("  Event Count: 64 "),
             Line::from("  Avg Bits/Event: 4.00 "),
             Line::from("  Raw Entropy Words: 24 "),
@@ -600,12 +491,21 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from(""),
             Line::from(" CURRENT "),
             Line::from(format!("  Network: {}", app.network)),
-            Line::from(format!("  Art: {}", app.art)),
-            Line::from(format!("  Selected bit: {}", app.cursor)),
             Line::from(format!("  WIF prefix: {}", app.network.wif_prefix())),
             Line::from(format!("  Bech32 HRP: {}", app.network.bech32_hrp())),
+            Line::from(format!("  Selected bit: {}", app.cursor)),
             Line::from(""),
-            Line::from("  Press \\ to close this panel. "),
+            Line::from(" CONTROLS "),
+            Line::from("  Tab    Cycle network profile "),
+            Line::from("  \\ / | / i  Toggle extra info "),
+            Line::from("  r      Randomize a valid secret "),
+            Line::from("  f      Fill the entire grid "),
+            Line::from("  c      Clear the grid "),
+            Line::from("  a      Cycle bit matrix art presets "),
+            Line::from("  Space  Flip the selected bit "),
+            Line::from("  hjkl   Move the cursor "),
+            Line::from("  Esc    Close help "),
+            Line::from("  q      Quit "),
         ])
         .block(
             Block::default()
