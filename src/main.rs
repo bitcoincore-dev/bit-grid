@@ -307,7 +307,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         .constraints([
             Constraint::Length(3),
             Constraint::Min(16),
-            Constraint::Length(8),
+            Constraint::Length(5),
         ])
         .split(f.size());
 
@@ -371,50 +371,40 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
-    let controls =
-        " [\\] Cycle network | [a] Art cycle | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ";
+    let controls = " [\\] Cycle network | [a] Art cycle | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ";
+    let info_line = format!(
+        "entropy 256 bits | core {} | bech32 {} | WIF {} | p2wpkh",
+        app.network.as_bitcoin_network().to_core_arg(),
+        app.network.bech32_hrp(),
+        app.network.wif_prefix()
+    );
+    let paths_line =
+        "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret";
     let footer_lines = match derived {
         Ok(identity) => vec![
             Line::from(vec![
                 Span::styled(
-                    "SECRET: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(hex_str, Style::default().fg(Color::White)),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    "WIF: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(identity.wif, Style::default().fg(Color::White)),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    "ADDR: ",
+                    "SECRET/WIF: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    identity.address.to_string(),
+                    format!("{} | {}", hex_str, identity.wif),
                     Style::default().fg(Color::White),
                 ),
             ]),
             Line::from(vec![
                 Span::styled(
-                    "VERIFY: ",
+                    "ADDR/VERIFY: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
                     format!(
-                        "pubkey {} | WIF {} | address {}",
+                        "{} | pubkey {} | WIF {} | addr {}",
+                        identity.address,
                         if identity.pubkey_match_ok {
                             "ok"
                         } else {
@@ -441,29 +431,20 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    format!(
-                        "entropy 256 bits | network core arg {} | bech32 {} | WIF {} | addr p2wpkh",
-                        app.network.as_bitcoin_network().to_core_arg(),
-                        app.network.bech32_hrp(),
-                        app.network.wif_prefix()
-                    ),
-                    Style::default().fg(Color::White),
-                ),
+                Span::styled(info_line, Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
                 Span::styled(
-                    "PATHS: ",
+                    "PATHS/CTRL: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
-                    Style::default().fg(Color::White),
+                    format!("{} | {}", paths_line, controls),
+                    Style::default().fg(Color::DarkGray),
                 ),
             ]),
-            Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
         ],
         Err(err) => vec![
             Line::from(vec![
@@ -491,29 +472,20 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    format!(
-                        "entropy 256 bits | network core arg {} | bech32 {} | WIF {} | addr p2wpkh",
-                        app.network.as_bitcoin_network().to_core_arg(),
-                        app.network.bech32_hrp(),
-                        app.network.wif_prefix()
-                    ),
-                    Style::default().fg(Color::White),
-                ),
+                Span::styled(info_line, Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
                 Span::styled(
-                    "PATHS: ",
+                    "PATHS/CTRL: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
-                    Style::default().fg(Color::White),
+                    format!("{} | {}", paths_line, controls),
+                    Style::default().fg(Color::DarkGray),
                 ),
             ]),
-            Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
         ],
     };
 
