@@ -1,3 +1,4 @@
+use bip39::{Language, Mnemonic};
 use bitcoin::secp256k1::SecretKey;
 use bitcoin::{
     Address, Network,
@@ -432,6 +433,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(grid_paragraph, inner_grid_area);
 
     let raw_binary = format_binary(&app.bits);
+    let mnemonic = bip39_mnemonic(&app.bits).unwrap_or_else(|_| "<invalid mnemonic>".to_string());
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(64), Constraint::Percentage(36)])
@@ -453,30 +455,9 @@ fn ui(f: &mut Frame, app: &mut App) {
         .block(Block::default().borders(Borders::ALL).title(" SECRET "));
     f.render_widget(secret_panel, right_chunks[1]);
 
-    let current_state_lines = match &derived {
-        Ok(_identity) => vec![
-            Line::from(vec![
-                Span::styled(
-                    "SECRET: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
-            ]),
-        ],
-        Err(_err) => vec![
-            Line::from(vec![
-                Span::styled(
-                    "SECRET: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
-            ]),
-        ],
-    };
+    let current_state_lines = vec![Line::from(vec![
+        Span::styled(mnemonic.clone(), Style::default().fg(Color::White)),
+    ])];
 
     let state_footer = Paragraph::new(current_state_lines)
         .alignment(Alignment::Left)
@@ -494,10 +475,11 @@ fn ui(f: &mut Frame, app: &mut App) {
         };
         let raw_binary = format_binary(&app.bits);
         let checksum_bits = bip39_checksum_bits(&app.bits);
+        let mnemonic = bip39_mnemonic(&app.bits).unwrap_or_else(|err| err);
 
         let modal = Paragraph::new(vec![
             Line::from(" ENTROPY "),
-            Line::from("  Type: hexadecimal "),
+            Line::from("  Type: BIP39 mnemonic entropy "),
             Line::from("  Event Count: 64 "),
             Line::from("  Avg Bits/Event: 4.00 "),
             Line::from("  Raw Entropy Words: 24 "),
@@ -509,6 +491,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from(" KEY / WALLET "),
             Line::from("  Mnemonic Length: 24 "),
             Line::from("  PBKDF2 rounds: 2048 "),
+            Line::from(format!("  Mnemonic: {}", mnemonic)),
             Line::from("  Coin: testnet / testnet4 / signet / regtest "),
             Line::from("  Derivation Paths: BIP32, BIP44, BIP49, BIP84, BIP141 "),
             Line::from(""),
@@ -549,7 +532,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         let help = Paragraph::new(vec![
             Line::from(" BIP39-STYLE INFO "),
             Line::from(""),
-            Line::from(" This demo does not generate a mnemonic; it treats the grid as raw 256-bit entropy. "),
+            Line::from(" This demo generates a BIP39 mnemonic from the grid's 256-bit entropy. "),
             Line::from(" Randomize uses OS-backed CSPRNG and only accepts a valid secp256k1 secret key. "),
             Line::from(""),
             Line::from(" KEY TYPES "),
@@ -618,6 +601,12 @@ fn format_binary(bytes: &[u8]) -> String {
 fn bip39_checksum_bits(bytes: &[u8]) -> String {
     let checksum = sha256::Hash::hash(bytes).to_byte_array();
     format!("{:08b}", checksum[0])
+}
+
+fn bip39_mnemonic(bytes: &[u8]) -> Result<String, String> {
+    Mnemonic::from_entropy_in(Language::English, bytes)
+        .map(|mnemonic| mnemonic.to_string())
+        .map_err(|err| format!("mnemonic generation failed: {err}"))
 }
 
 fn mayan_digit(row: i32, col: i32, top_row: i32, value: u32) -> bool {

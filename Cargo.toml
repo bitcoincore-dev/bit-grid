@@ -2,9 +2,18 @@
 name = "bit-grid"
 version = "0.0.1"
 edition = "2024"
+description = "bit-grid: fun with entropy"
+repository = "https://github.com/randymcmillan/bit-grid.git"
+license = "MIT"
 
 [dependencies]
+bip39 = "2"
 bitcoin = "0.32"
 crossterm = "0.27"
 rand = "0.8"
 ratatui = "0.26"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
