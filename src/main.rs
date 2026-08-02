@@ -1,3 +1,9 @@
+use bitcoin::{
+    address::NetworkUnchecked,
+    key::{CompressedPublicKey, PrivateKey, Secp256k1},
+    Address, Network, PublicKey,
+};
+use bitcoin::secp256k1::SecretKey;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
     execute,
@@ -12,15 +18,63 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame, Terminal,
 };
-use std::{io, time::Duration};
+use std::{error::Error, fmt, io, time::Duration};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DemoNetwork {
+    Testnet,
+    Testnet4,
+    Signet,
+    Regtest,
+}
+
+impl DemoNetwork {
+    const ALL: [Self; 4] = [Self::Testnet, Self::Testnet4, Self::Signet, Self::Regtest];
+
+    fn next(self) -> Self {
+        let idx = Self::ALL.iter().position(|network| *network == self).unwrap_or(0);
+        Self::ALL[(idx + 1) % Self::ALL.len()]
+    }
+
+    fn as_bitcoin_network(self) -> Network {
+        match self {
+            Self::Testnet => Network::Testnet,
+            Self::Testnet4 => Network::Testnet4,
+            Self::Signet => Network::Signet,
+            Self::Regtest => Network::Regtest,
+        }
+    }
+}
+
+impl fmt::Display for DemoNetwork {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Testnet => "testnet",
+            Self::Testnet4 => "testnet4",
+            Self::Signet => "signet",
+            Self::Regtest => "regtest",
+        })
+    }
+}
 
 struct App {
     /// 256 bits represented as 32 bytes (256 bits total)
     bits: [u8; 32],
     /// Current selected index in the 256-bit array (0..255)
     cursor: usize,
+    /// Selected safe Bitcoin network profile
+    network: DemoNetwork,
     /// Whether the app should quit
     should_quit: bool,
+}
+
+struct DerivedIdentity {
+    public_key: PublicKey,
+    address: Address,
+    wif: String,
+    wif_roundtrip_ok: bool,
+    address_roundtrip_ok: bool,
+    pubkey_match_ok: bool,
 }
 
 impl App {
@@ -28,22 +82,32 @@ impl App {
         Self {
             bits: [0u8; 32],
             cursor: 0,
+            network: DemoNetwork::Testnet,
             should_quit: false,
         }
     }
 
     fn toggle_bit(&mut self) {
         let byte_idx = self.cursor / 8;
-        let bit_idx = 7 - (self.cursor % 8); // MSB left, LSB right
+        let bit_idx = 7 - (self.cursor % 8);
         self.bits[byte_idx] ^= 1 << bit_idx;
     }
 
     fn randomize_bits(&mut self) {
-        OsRng.fill_bytes(&mut self.bits);
+        loop {
+            OsRng.fill_bytes(&mut self.bits);
+            if SecretKey::from_slice(&self.bits).is_ok() {
+                break;
+            }
+        }
     }
 
     fn clear_bits(&mut self) {
         self.bits = [0u8; 32];
+    }
+
+    fn cycle_network(&mut self) {
+        self.network = self.network.next();
     }
 
     fn move_cursor(&mut self, dx: i32, dy: i32) {
@@ -55,10 +119,46 @@ impl App {
 
         self.cursor = (new_row * 16 + new_col) as usize;
     }
+
+    fn secret_key(&self) -> Result<SecretKey, bitcoin::secp256k1::Error> {
+        SecretKey::from_slice(&self.bits)
+    }
+
+    fn derived_identity(&self) -> Result<DerivedIdentity, String> {
+        let secret_key = self
+            .secret_key()
+            .map_err(|err| format!("invalid secret key: {err}"))?;
+
+        let secp = Secp256k1::new();
+        let private_key = PrivateKey::new(secret_key, self.network.as_bitcoin_network());
+        let public_key = private_key.public_key(&secp);
+        let compressed_public_key = CompressedPublicKey::try_from(public_key)
+            .map_err(|err| format!("could not compress public key: {err}"))?;
+        let address = Address::p2wpkh(&compressed_public_key, self.network.as_bitcoin_network());
+        let wif = private_key.to_wif();
+        let parsed_wif = PrivateKey::from_wif(&wif)
+            .map_err(|err| format!("WIF roundtrip failed: {err}"))?;
+        let parsed_address: Address<NetworkUnchecked> = address
+            .to_string()
+            .parse()
+            .map_err(|err| format!("address roundtrip failed: {err}"))?;
+
+        Ok(DerivedIdentity {
+            public_key,
+            address: address.clone(),
+            wif,
+            wif_roundtrip_ok: parsed_wif.inner == private_key.inner
+                && parsed_wif.compressed == private_key.compressed
+                && parsed_wif.network == private_key.network,
+            address_roundtrip_ok: parsed_address
+                .require_network(self.network.as_bitcoin_network())
+                .is_ok(),
+            pubkey_match_ok: address.is_related_to_pubkey(&public_key),
+        })
+    }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Setup terminal
+fn main() -> Result<(), Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
@@ -67,7 +167,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut app = App::new();
 
-    // Event loop
     while !app.should_quit {
         terminal.draw(|f| ui(f, &mut app))?;
 
@@ -79,6 +178,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Char(' ') => app.toggle_bit(),
                         KeyCode::Char('r') => app.randomize_bits(),
                         KeyCode::Char('c') => app.clear_bits(),
+                        KeyCode::Char('\\') => app.cycle_network(),
                         KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
                         KeyCode::Right | KeyCode::Char('l') => app.move_cursor(1, 0),
                         KeyCode::Up | KeyCode::Char('k') => app.move_cursor(0, -1),
@@ -90,7 +190,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Restore terminal
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
@@ -99,22 +198,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn ui(f: &mut Frame, app: &mut App) {
+    let derived = app.derived_identity();
+    let hex_str: String = app.bits.iter().map(|b| format!("{:02x}", b)).collect();
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(3), // Header / Info
-            Constraint::Min(18),   // 16x16 Grid Box
-            Constraint::Length(4), // Hex/Byte View & Help
+            Constraint::Length(3),
+            Constraint::Min(16),
+            Constraint::Length(7),
         ])
         .split(f.size());
 
-    // 1. Header Area
     let byte_idx = app.cursor / 8;
     let bit_idx = 7 - (app.cursor % 8);
     let header_text = format!(
-        " 256-BIT GRID INSPECTOR | Selected Bit: {} (Byte {}, Bit {}) ",
-        app.cursor, byte_idx, bit_idx
+        " BIT GRID | Network: {} | Selected Bit: {} (Byte {}, Bit {}) ",
+        app.network, app.cursor, byte_idx, bit_idx
     );
     let header = Paragraph::new(header_text)
         .alignment(Alignment::Center)
@@ -122,7 +223,6 @@ fn ui(f: &mut Frame, app: &mut App) {
         .block(Block::default().borders(Borders::ALL).title(" Overview "));
     f.render_widget(header, chunks[0]);
 
-    // 2. 16x16 Grid Construction
     let grid_block = Block::default().borders(Borders::ALL).title(" 16x16 Bit Grid (256 Bits) ");
     let inner_grid_area = grid_block.inner(chunks[1]);
     f.render_widget(grid_block, chunks[1]);
@@ -165,26 +265,52 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
-    // 3. Hex Output & Controls
-    let hex_str: String = app.bits.iter().map(|b| format!("{:02x}", b)).collect();
-    let controls = " [Arrow Keys/Vim] Move | [Space] Toggle | [r] Randomize | [c] Clear | [q] Quit ";
-    
-    let footer_lines = vec![
-        Line::from(vec![
-            Span::styled("HEX: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-            Span::styled(hex_str, Style::default().fg(Color::White)),
-        ]),
-        Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
-    ];
+    let controls = " [\\] Cycle network | [Space] Toggle | [r] Randomize valid secret | [c] Clear | [q] Quit ";
+    let footer_lines = match derived {
+        Ok(identity) => vec![
+            Line::from(vec![
+                Span::styled("SECRET: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(hex_str, Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![
+                Span::styled("WIF: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(identity.wif, Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![
+                Span::styled("ADDR: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(identity.address.to_string(), Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![
+                Span::styled("VERIFY: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    format!(
+                        "pubkey {} | WIF {} | address {}",
+                        if identity.pubkey_match_ok { "ok" } else { "fail" },
+                        if identity.wif_roundtrip_ok { "ok" } else { "fail" },
+                        if identity.address_roundtrip_ok { "ok" } else { "fail" }
+                    ),
+                    Style::default().fg(Color::Green),
+                ),
+            ]),
+            Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
+        ],
+        Err(err) => vec![
+            Line::from(vec![
+                Span::styled("SECRET: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(hex_str, Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![
+                Span::styled("VERIFY: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(err, Style::default().fg(Color::Red)),
+            ]),
+            Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
+        ],
+    };
 
     let footer = Paragraph::new(footer_lines)
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL).title(" State & Keybindings "));
+        .block(Block::default().borders(Borders::ALL).title(" Verification "));
     f.render_widget(footer, chunks[2]);
-}
-
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
 }
 
 #[cfg(test)]
@@ -192,8 +318,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn cycles_safe_networks() {
+        let mut network = DemoNetwork::Testnet;
+        network = network.next();
+        assert_eq!(network, DemoNetwork::Testnet4);
+        network = network.next();
+        assert_eq!(network, DemoNetwork::Signet);
+        network = network.next();
+        assert_eq!(network, DemoNetwork::Regtest);
+        network = network.next();
+        assert_eq!(network, DemoNetwork::Testnet);
+    }
+
+    #[test]
+    fn derives_and_roundtrips_identity() {
+        let mut app = App::new();
+        app.bits = [1u8; 32];
+        app.network = DemoNetwork::Regtest;
+
+        let identity = app.derived_identity().expect("valid identity");
+        assert!(identity.pubkey_match_ok);
+        assert!(identity.wif_roundtrip_ok);
+        assert!(identity.address_roundtrip_ok);
     }
 }
