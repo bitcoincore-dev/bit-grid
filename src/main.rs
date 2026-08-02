@@ -400,15 +400,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(grid_paragraph, inner_grid_area);
 
     let raw_binary = format_binary(&app.bits);
-    let raw_panel = Paragraph::new(vec![Line::from(vec![
-        Span::styled(
-            "RAW: ",
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(raw_binary.clone(), Style::default().fg(Color::White)),
-    ])])
+    let raw_panel = Paragraph::new(raw_binary.clone())
     .alignment(Alignment::Left)
     .wrap(Wrap { trim: false })
     .block(Block::default().borders(Borders::ALL).title(" RAW "));
