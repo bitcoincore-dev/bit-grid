@@ -318,9 +318,14 @@ fn ui(f: &mut Frame, app: &mut App) {
         .constraints([
             Constraint::Length(3),
             Constraint::Min(16),
-            Constraint::Length(4),
+            Constraint::Length(3),
         ])
         .split(f.size());
+
+    let body_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
+        .split(chunks[1]);
 
     let byte_idx = app.cursor / 8;
     let bit_idx = 7 - (app.cursor % 8);
@@ -346,8 +351,8 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_block = Block::default()
         .borders(Borders::ALL)
         .title(" 16x16 Bit Grid (256 Bits) ");
-    let inner_grid_area = grid_block.inner(chunks[1]);
-    f.render_widget(grid_block, chunks[1]);
+    let inner_grid_area = grid_block.inner(body_chunks[0]);
+    f.render_widget(grid_block, body_chunks[0]);
 
     let mut grid_lines = Vec::new();
     for row in 0..16 {
@@ -387,49 +392,34 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
-    let controls = " [Tab] Cycle network | [\\] More info | [a] Art cycle | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ";
-    let footer_lines = match derived {
+    let info_block = Block::default().borders(Borders::ALL).title(" Current State ");
+    let info_area = info_block.inner(body_chunks[1]);
+    f.render_widget(info_block, body_chunks[1]);
+
+    let info_lines = match derived {
         Ok(identity) => vec![
             Line::from(vec![
                 Span::styled(
-                    "SECRET/WIF: ",
+                    "SECRET: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!("{} | {}", hex_str, identity.wif),
+                    hex_str,
                     Style::default().fg(Color::White),
                 ),
             ]),
             Line::from(vec![
                 Span::styled(
-                    "ADDR/VERIFY: ",
+                    "WIF: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!(
-                        "{} | pubkey {} | WIF {} | addr {}",
-                        identity.address,
-                        if identity.pubkey_match_ok {
-                            "ok"
-                        } else {
-                            "fail"
-                        },
-                        if identity.wif_roundtrip_ok {
-                            "ok"
-                        } else {
-                            "fail"
-                        },
-                        if identity.address_roundtrip_ok {
-                            "ok"
-                        } else {
-                            "fail"
-                        }
-                    ),
-                    Style::default().fg(Color::Green),
+                    identity.wif,
+                    Style::default().fg(Color::White),
                 ),
             ]),
             if app.show_info {
@@ -455,17 +445,55 @@ fn ui(f: &mut Frame, app: &mut App) {
             },
             Line::from(vec![
                 Span::styled(
-                    "PATHS/CTRL: ",
+                    "ADDR: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    identity.address.to_string(),
+                    Style::default().fg(Color::White),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "VERIFY: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
                     format!(
-                        "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret | {}",
-                        controls
+                        "pubkey {} | WIF {} | addr {}",
+                        if identity.pubkey_match_ok {
+                            "ok"
+                        } else {
+                            "fail"
+                        },
+                        if identity.wif_roundtrip_ok {
+                            "ok"
+                        } else {
+                            "fail"
+                        },
+                        if identity.address_roundtrip_ok {
+                            "ok"
+                        } else {
+                            "fail"
+                        }
                     ),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(Color::Green),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "PATHS: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
+                    Style::default().fg(Color::White),
                 ),
             ]),
         ],
@@ -511,29 +539,48 @@ fn ui(f: &mut Frame, app: &mut App) {
             },
             Line::from(vec![
                 Span::styled(
-                    "PATHS/CTRL: ",
+                        "ADDR: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    format!(
-                        "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret | {}",
-                        controls
+                    Span::styled("invalid secret", Style::default().fg(Color::Red)),
+            ]),
+            Line::from(vec![
+                    Span::styled(
+                        "VERIFY: ",
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
                     ),
-                    Style::default().fg(Color::DarkGray),
-                ),
+                    Span::styled("n/a", Style::default().fg(Color::DarkGray)),
+            ]),
+            Line::from(vec![
+                    Span::styled(
+                        "PATHS: ",
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
+                        Style::default().fg(Color::White),
+                    ),
             ]),
         ],
     };
 
-    let footer = Paragraph::new(footer_lines)
+    let info_panel = Paragraph::new(info_lines)
         .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Verification "),
-        );
+        .block(Block::default().borders(Borders::ALL).title(" Current State "));
+    f.render_widget(info_panel, info_area);
+
+    let footer = Paragraph::new(vec![Line::from(Span::styled(
+        " [Tab] Cycle network | [\\] Toggle info | [a] Art cycle | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ",
+        Style::default().fg(Color::DarkGray),
+    ))])
+    .alignment(Alignment::Center)
+    .block(Block::default().borders(Borders::ALL).title(" Controls "));
     f.render_widget(footer, chunks[2]);
 
     if app.show_help {
