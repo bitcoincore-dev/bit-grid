@@ -123,6 +123,10 @@ impl App {
         self.bits = [0u8; 32];
     }
 
+    fn fill_bits(&mut self) {
+        self.bits = [0xff; 32];
+    }
+
     fn cycle_network(&mut self) {
         self.network = self.network.next();
     }
@@ -194,6 +198,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         KeyCode::Char(' ') => app.toggle_bit(),
                         KeyCode::Char('r') => app.randomize_bits(),
                         KeyCode::Char('c') => app.clear_bits(),
+                        KeyCode::Char('f') => app.fill_bits(),
                         KeyCode::Char('?') => app.show_help = !app.show_help,
                         KeyCode::Char('\\') => app.cycle_network(),
                         KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
@@ -289,7 +294,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(grid_paragraph, inner_grid_area);
 
     let controls =
-        " [\\] Cycle network | [Space] Toggle | [r] Randomize valid secret | [c] Clear | [q] Quit ";
+        " [\\] Cycle network | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ";
     let footer_lines = match derived {
         Ok(identity) => vec![
             Line::from(vec![
@@ -468,6 +473,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from("  ?      Toggle this help panel "),
             Line::from("  \\      Cycle network profile "),
             Line::from("  r      Randomize a valid secret "),
+            Line::from("  f      Fill the entire grid "),
             Line::from("  c      Clear the grid "),
             Line::from("  Space  Flip the selected bit "),
             Line::from("  hjkl   Move the cursor "),
@@ -531,5 +537,13 @@ mod tests {
         assert!(identity.pubkey_match_ok);
         assert!(identity.wif_roundtrip_ok);
         assert!(identity.address_roundtrip_ok);
+    }
+
+    #[test]
+    fn fill_bits_fills_entire_grid() {
+        let mut app = App::new();
+        app.fill_bits();
+        assert!(app.bits.iter().all(|byte| *byte == 0xff));
+        assert!(app.secret_key().is_err());
     }
 }
