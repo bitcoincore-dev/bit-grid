@@ -120,6 +120,8 @@ struct App {
     network: DemoNetwork,
     /// Current art preset
     art: BitArt,
+    /// Whether the extra info footer is visible
+    show_info: bool,
     /// Whether the help popup is visible
     show_help: bool,
     /// Whether the app should quit
@@ -141,6 +143,7 @@ impl App {
             cursor: 0,
             network: DemoNetwork::Testnet,
             art: BitArt::Checker,
+            show_info: false,
             show_help: false,
             should_quit: false,
         }
@@ -206,6 +209,10 @@ impl App {
 
     fn cycle_network(&mut self) {
         self.network = self.network.next();
+    }
+
+    fn toggle_info(&mut self) {
+        self.show_info = !self.show_info;
     }
 
     fn move_cursor(&mut self, dx: i32, dy: i32) {
@@ -278,7 +285,8 @@ fn main() -> Result<(), Box<dyn Error>> {
                         KeyCode::Char('f') => app.fill_bits(),
                         KeyCode::Char('a') => app.cycle_art(),
                         KeyCode::Char('?') => app.show_help = !app.show_help,
-                        KeyCode::Char('\\') => app.cycle_network(),
+                        KeyCode::Tab => app.cycle_network(),
+                        KeyCode::Char('\\') => app.toggle_info(),
                         KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
                         KeyCode::Right | KeyCode::Char('l') => app.move_cursor(1, 0),
                         KeyCode::Up | KeyCode::Char('k') => app.move_cursor(0, -1),
@@ -307,7 +315,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         .constraints([
             Constraint::Length(3),
             Constraint::Min(16),
-            Constraint::Length(5),
+            Constraint::Length(4),
         ])
         .split(f.size());
 
@@ -371,15 +379,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
-    let controls = " [\\] Cycle network | [a] Art cycle | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ";
-    let info_line = format!(
-        "entropy 256 bits | core {} | bech32 {} | WIF {} | p2wpkh",
-        app.network.as_bitcoin_network().to_core_arg(),
-        app.network.bech32_hrp(),
-        app.network.wif_prefix()
-    );
-    let paths_line =
-        "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret";
+    let controls = " [Tab] Cycle network | [\\] More info | [a] Art cycle | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ";
     let footer_lines = match derived {
         Ok(identity) => vec![
             Line::from(vec![
@@ -424,15 +424,27 @@ fn ui(f: &mut Frame, app: &mut App) {
                     Style::default().fg(Color::Green),
                 ),
             ]),
-            Line::from(vec![
-                Span::styled(
-                    "MORE INFO: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(info_line, Style::default().fg(Color::White)),
-            ]),
+            if app.show_info {
+                Line::from(vec![
+                    Span::styled(
+                        "MORE INFO: ",
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        format!(
+                            "entropy 256 bits | core {} | bech32 {} | WIF {} | p2wpkh",
+                            app.network.as_bitcoin_network().to_core_arg(),
+                            app.network.bech32_hrp(),
+                            app.network.wif_prefix()
+                        ),
+                        Style::default().fg(Color::White),
+                    ),
+                ])
+            } else {
+                Line::from("")
+            },
             Line::from(vec![
                 Span::styled(
                     "PATHS/CTRL: ",
@@ -441,7 +453,10 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!("{} | {}", paths_line, controls),
+                    format!(
+                        "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret | {}",
+                        controls
+                    ),
                     Style::default().fg(Color::DarkGray),
                 ),
             ]),
@@ -465,15 +480,27 @@ fn ui(f: &mut Frame, app: &mut App) {
                 ),
                 Span::styled(err, Style::default().fg(Color::Red)),
             ]),
-            Line::from(vec![
-                Span::styled(
-                    "MORE INFO: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(info_line, Style::default().fg(Color::White)),
-            ]),
+            if app.show_info {
+                Line::from(vec![
+                    Span::styled(
+                        "MORE INFO: ",
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    ),
+                    Span::styled(
+                        format!(
+                            "entropy 256 bits | core {} | bech32 {} | WIF {} | p2wpkh",
+                            app.network.as_bitcoin_network().to_core_arg(),
+                            app.network.bech32_hrp(),
+                            app.network.wif_prefix()
+                        ),
+                        Style::default().fg(Color::White),
+                    ),
+                ])
+            } else {
+                Line::from("")
+            },
             Line::from(vec![
                 Span::styled(
                     "PATHS/CTRL: ",
@@ -482,7 +509,10 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    format!("{} | {}", paths_line, controls),
+                    format!(
+                        "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret | {}",
+                        controls
+                    ),
                     Style::default().fg(Color::DarkGray),
                 ),
             ]),
