@@ -2,6 +2,7 @@ use bitcoin::secp256k1::SecretKey;
 use bitcoin::{
     Address, Network,
     address::NetworkUnchecked,
+    hashes::{sha256, Hash},
     key::{CompressedPublicKey, PrivateKey, Secp256k1},
 };
 use crossterm::{
@@ -393,8 +394,9 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
+    let raw_binary = format_binary(&app.bits);
     let current_state_lines = match &derived {
-        Ok(identity) => vec![
+        Ok(_identity) => vec![
             Line::from(vec![
                 Span::styled(
                     "SECRET: ",
@@ -406,35 +408,18 @@ fn ui(f: &mut Frame, app: &mut App) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    "ADDR: ",
+                    "RAW BINARY: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(
-                    identity.address.to_string(),
+                    raw_binary.clone(),
                     Style::default().fg(Color::White),
                 ),
             ]),
-            Line::from(vec![
-                Span::styled(
-                    "VERIFY: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    format!(
-                        "pubkey {} | WIF {} | addr {}",
-                        if identity.pubkey_match_ok { "ok" } else { "fail" },
-                        if identity.wif_roundtrip_ok { "ok" } else { "fail" },
-                        if identity.address_roundtrip_ok { "ok" } else { "fail" }
-                    ),
-                    Style::default().fg(Color::Green),
-                ),
-            ]),
         ],
-        Err(err) => vec![
+        Err(_err) => vec![
             Line::from(vec![
                 Span::styled(
                     "SECRET: ",
@@ -446,27 +431,18 @@ fn ui(f: &mut Frame, app: &mut App) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    "ADDR: ",
+                    "RAW BINARY: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled("invalid secret", Style::default().fg(Color::Red)),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    "VERIFY: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(err.clone(), Style::default().fg(Color::Red)),
+                Span::styled(raw_binary.clone(), Style::default().fg(Color::White)),
             ]),
         ],
     };
 
     let state_footer = Paragraph::new(current_state_lines)
-        .alignment(Alignment::Center)
+        .alignment(Alignment::Left)
         .block(Block::default().borders(Borders::ALL).title(" Current State "));
     f.render_widget(state_footer, chunks[2]);
 
@@ -474,10 +450,12 @@ fn ui(f: &mut Frame, app: &mut App) {
         let area = centered_rect(86, 78, f.size());
         f.render_widget(Clear, area);
 
-        let wif_text = match &derived {
-            Ok(identity) => identity.wif.clone(),
-            Err(_) => "n/a".to_string(),
+        let (address_text, wif_text) = match &derived {
+            Ok(identity) => (identity.address.to_string(), identity.wif.clone()),
+            Err(_) => ("n/a".to_string(), "n/a".to_string()),
         };
+        let raw_binary = format_binary(&app.bits);
+        let checksum_bits = bip39_checksum_bits(&app.bits);
 
         let modal = Paragraph::new(vec![
             Line::from(" ENTROPY "),
@@ -486,6 +464,8 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from("  Avg Bits/Event: 4.00 "),
             Line::from("  Raw Entropy Words: 24 "),
             Line::from("  Total Bits: 256 "),
+            Line::from(format!("  Raw Binary: {}", raw_binary)),
+            Line::from(format!("  Binary Checksum: {}", checksum_bits)),
             Line::from(format!("  Filtered Entropy: {}", hex_str)),
             Line::from(""),
             Line::from(" KEY / WALLET "),
@@ -496,6 +476,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from(""),
             Line::from(" CURRENT "),
             Line::from(format!("  Network: {}", app.network)),
+            Line::from(format!("  Address: {}", address_text)),
             Line::from(format!("  WIF: {}", wif_text)),
             Line::from(format!("  WIF prefix: {}", app.network.wif_prefix())),
             Line::from(format!("  Bech32 HRP: {}", app.network.bech32_hrp())),
@@ -585,6 +566,19 @@ fn centered_rect(
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(vertical[1])[1]
+}
+
+fn format_binary(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|byte| format!("{:08b}", byte))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn bip39_checksum_bits(bytes: &[u8]) -> String {
+    let checksum = sha256::Hash::hash(bytes).to_byte_array();
+    format!("{:08b}", checksum[0])
 }
 
 #[cfg(test)]
