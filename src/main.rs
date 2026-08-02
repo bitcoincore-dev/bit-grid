@@ -315,6 +315,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             | KeyCode::Char('\\')
                             | KeyCode::Char('|')
                             | KeyCode::Char('i') => app.toggle_info(),
+                            KeyCode::Tab => app.cycle_network(),
                             _ => {}
                         }
                     } else {
