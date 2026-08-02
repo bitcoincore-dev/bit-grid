@@ -37,16 +37,30 @@ enum BitArt {
     Diamond,
     Plus,
     Diagonal,
+    MayanZero,
+    MayanOne,
+    MayanFive,
+    MayanThirteen,
+    MayanNineteen,
+    MayanThirtyThree,
+    MayanFourTwentyNine,
 }
 
 impl BitArt {
-    const ALL: [Self; 6] = [
+    const ALL: [Self; 13] = [
         Self::Checker,
         Self::Border,
         Self::X,
         Self::Diamond,
         Self::Plus,
         Self::Diagonal,
+        Self::MayanZero,
+        Self::MayanOne,
+        Self::MayanFive,
+        Self::MayanThirteen,
+        Self::MayanNineteen,
+        Self::MayanThirtyThree,
+        Self::MayanFourTwentyNine,
     ];
 
     fn next(self) -> Self {
@@ -64,6 +78,13 @@ impl fmt::Display for BitArt {
             Self::Diamond => "diamond",
             Self::Plus => "plus",
             Self::Diagonal => "diagonal",
+            Self::MayanZero => "mayan-0",
+            Self::MayanOne => "mayan-1",
+            Self::MayanFive => "mayan-5",
+            Self::MayanThirteen => "mayan-13",
+            Self::MayanNineteen => "mayan-19",
+            Self::MayanThirtyThree => "mayan-33",
+            Self::MayanFourTwentyNine => "mayan-429",
         })
     }
 }
@@ -207,6 +228,13 @@ impl App {
             }
             BitArt::Plus => row == 7 || row == 8 || col == 7 || col == 8,
             BitArt::Diagonal => (row + col) % 4 == 0 || (row + col) % 4 == 1,
+            BitArt::MayanZero => mayan_shell(row, col, 5, 6),
+            BitArt::MayanOne => mayan_digit(row, col, 5, 1),
+            BitArt::MayanFive => mayan_digit(row, col, 5, 5),
+            BitArt::MayanThirteen => mayan_digit(row, col, 5, 13),
+            BitArt::MayanNineteen => mayan_digit(row, col, 5, 19),
+            BitArt::MayanThirtyThree => mayan_stack(row, col, &[1, 13]),
+            BitArt::MayanFourTwentyNine => mayan_stack(row, col, &[1, 1, 9]),
         }
     }
 
@@ -528,6 +556,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from("  BIP32 roots can feed BIP44/BIP49/BIP84-style paths. "),
             Line::from("  BIP85-style deterministic entropy is informational only here. "),
             Line::from("  Networks are limited to testnet, testnet4, signet, and regtest. "),
+            Line::from("  Mayan examples: 0 shell, 1 dot, 5 bar, 13, 19, 33, 429. "),
             Line::from(""),
             Line::from(" SHORTCUTS "),
             Line::from("  ?      Toggle this help panel "),
@@ -583,6 +612,52 @@ fn format_binary(bytes: &[u8]) -> String {
 fn bip39_checksum_bits(bytes: &[u8]) -> String {
     let checksum = sha256::Hash::hash(bytes).to_byte_array();
     format!("{:08b}", checksum[0])
+}
+
+fn mayan_digit(row: i32, col: i32, top_row: i32, value: u32) -> bool {
+    let dots = value % 5;
+    let bars = (value / 5) as i32;
+
+    if !(top_row..=top_row + 3).contains(&row) {
+        return false;
+    }
+
+    let dot_row = row == top_row;
+    let bar_rows = row > top_row && row <= top_row + bars;
+
+    let dots = match dots {
+        1 => dot_row && col == 8,
+        2 => dot_row && (col == 6 || col == 10),
+        3 => dot_row && (col == 5 || col == 8 || col == 11),
+        4 => dot_row && (col == 4 || col == 6 || col == 9 || col == 11),
+        _ => false,
+    };
+
+    dots || (bar_rows && (4..=11).contains(&col))
+}
+
+fn mayan_shell(row: i32, col: i32, top_row: i32, left_col: i32) -> bool {
+    let bottom_row = top_row + 3;
+    let right_col = left_col + 5;
+    let mid_row = top_row + 1;
+    let inner_bottom = top_row + 2;
+
+    if row == top_row || row == bottom_row {
+        return (left_col..=right_col).contains(&col);
+    }
+
+    if row == mid_row || row == inner_bottom {
+        return col == left_col || col == right_col;
+    }
+
+    false
+}
+
+fn mayan_stack(row: i32, col: i32, values: &[u32]) -> bool {
+    values.iter().enumerate().any(|(level, value)| {
+        let top_row = 1 + (level as i32 * 5);
+        mayan_digit(row, col, top_row, *value)
+    })
 }
 
 #[cfg(test)]
