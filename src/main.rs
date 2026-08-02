@@ -368,6 +368,18 @@ fn ui(f: &mut Frame, app: &mut App) {
                     Style::default().fg(Color::White),
                 ),
             ]),
+            Line::from(vec![
+                Span::styled(
+                    "PATHS: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
+                    Style::default().fg(Color::White),
+                ),
+            ]),
             Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
         ],
         Err(err) => vec![
@@ -406,6 +418,18 @@ fn ui(f: &mut Frame, app: &mut App) {
                     Style::default().fg(Color::White),
                 ),
             ]),
+            Line::from(vec![
+                Span::styled(
+                    "PATHS: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
+                    Style::default().fg(Color::White),
+                ),
+            ]),
             Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
         ],
     };
@@ -420,21 +444,34 @@ fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(footer, chunks[2]);
 
     if app.show_help {
-        let area = centered_rect(70, 55, f.size());
+        let area = centered_rect(82, 76, f.size());
         f.render_widget(Clear, area);
 
         let help = Paragraph::new(vec![
-            Line::from(" HELP "),
+            Line::from(" BIP39-STYLE INFO "),
             Line::from(""),
-            Line::from(" ?      Toggle this help panel "),
-            Line::from(" \\      Cycle testnet / testnet4 / signet / regtest "),
-            Line::from(" r      Randomize the grid with a valid secure secret "),
-            Line::from(" c      Clear the grid "),
-            Line::from(" Space  Flip the selected bit "),
-            Line::from(" hjkl   Move the cursor "),
-            Line::from(" q/Esc  Quit "),
+            Line::from(" This demo does not generate a mnemonic; it treats the grid as raw 256-bit entropy. "),
+            Line::from(" Randomize uses OS-backed CSPRNG and only accepts a valid secp256k1 secret key. "),
             Line::from(""),
-            Line::from(" Footer info shows the WIF, address, and roundtrip verification. "),
+            Line::from(" KEY TYPES "),
+            Line::from("  entropy  ->  256-bit grid "),
+            Line::from("  secret   ->  secp256k1 private key "),
+            Line::from("  public   ->  compressed public key "),
+            Line::from("  address  ->  native segwit P2WPKH "),
+            Line::from(""),
+            Line::from(" DERIVATION NOTES "),
+            Line::from("  BIP32 roots can feed BIP44/BIP49/BIP84-style paths. "),
+            Line::from("  BIP85-style deterministic entropy is informational only here. "),
+            Line::from("  Networks are limited to testnet, testnet4, signet, and regtest. "),
+            Line::from(""),
+            Line::from(" SHORTCUTS "),
+            Line::from("  ?      Toggle this help panel "),
+            Line::from("  \\      Cycle network profile "),
+            Line::from("  r      Randomize a valid secret "),
+            Line::from("  c      Clear the grid "),
+            Line::from("  Space  Flip the selected bit "),
+            Line::from("  hjkl   Move the cursor "),
+            Line::from("  q/Esc  Quit "),
         ])
         .block(Block::default().borders(Borders::ALL).title(" Help "))
         .alignment(Alignment::Left)
