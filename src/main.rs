@@ -330,13 +330,8 @@ fn ui(f: &mut Frame, app: &mut App) {
     let byte_idx = app.cursor / 8;
     let bit_idx = 7 - (app.cursor % 8);
     let header_text = format!(
-        " BIT GRID | Network: {} | Art: {} | Info: {} | Selected Bit: {} (Byte {}, Bit {}) ",
-        app.network,
-        app.art,
-        if app.show_info { "on" } else { "off" },
-        app.cursor,
-        byte_idx,
-        bit_idx
+        " BIT GRID | Network: {} | Selected Bit: {} (Byte {}, Bit {}) ",
+        app.network, app.cursor, byte_idx, bit_idx
     );
     let header = Paragraph::new(header_text)
         .alignment(Alignment::Center)
@@ -345,7 +340,7 @@ fn ui(f: &mut Frame, app: &mut App) {
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         )
-        .block(Block::default().borders(Borders::ALL).title(" Overview "));
+        .block(Block::default().borders(Borders::ALL).title(" BIT GRID "));
     f.render_widget(header, chunks[0]);
 
     let grid_block = Block::default()
