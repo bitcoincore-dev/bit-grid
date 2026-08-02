@@ -697,4 +697,13 @@ mod tests {
         assert!(app.bits.iter().all(|byte| *byte == 0xf0));
         assert!(app.secret_key().is_ok());
     }
+
+    #[test]
+    fn cycles_all_bit_art_presets() {
+        let mut art = BitArt::Checker;
+        for _ in 0..BitArt::ALL.len() {
+            art = art.next();
+        }
+        assert_eq!(art, BitArt::Checker);
+    }
 }
