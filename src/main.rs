@@ -481,7 +481,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     let state_footer = Paragraph::new(current_state_lines)
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: false })
-        .block(Block::default().borders(Borders::ALL).title(" Current State "));
+        .block(Block::default().borders(Borders::ALL).title(" BIP39 Mnemonic "));
     f.render_widget(state_footer, chunks[2]);
 
     if app.show_info {
@@ -535,7 +535,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Current State "),
+                .title(" BIP39 Mnemonic "),
         )
         .alignment(Alignment::Left)
         .style(Style::default().fg(Color::White));
