@@ -406,15 +406,6 @@ fn ui(f: &mut Frame, app: &mut App) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    "WIF: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(identity.wif, Style::default().fg(Color::White)),
-            ]),
-            Line::from(vec![
-                Span::styled(
                     "ADDR: ",
                     Style::default()
                         .fg(Color::Yellow)
@@ -455,15 +446,6 @@ fn ui(f: &mut Frame, app: &mut App) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    "WIF: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled("n/a", Style::default().fg(Color::DarkGray)),
-            ]),
-            Line::from(vec![
-                Span::styled(
                     "ADDR: ",
                     Style::default()
                         .fg(Color::Yellow)
@@ -492,6 +474,11 @@ fn ui(f: &mut Frame, app: &mut App) {
         let area = centered_rect(86, 78, f.size());
         f.render_widget(Clear, area);
 
+        let wif_text = match &derived {
+            Ok(identity) => identity.wif.clone(),
+            Err(_) => "n/a".to_string(),
+        };
+
         let modal = Paragraph::new(vec![
             Line::from(" ENTROPY "),
             Line::from("  Type: hexadecimal "),
@@ -509,6 +496,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from(""),
             Line::from(" CURRENT "),
             Line::from(format!("  Network: {}", app.network)),
+            Line::from(format!("  WIF: {}", wif_text)),
             Line::from(format!("  WIF prefix: {}", app.network.wif_prefix())),
             Line::from(format!("  Bech32 HRP: {}", app.network.bech32_hrp())),
             Line::from(format!("  Selected bit: {}", app.cursor)),
