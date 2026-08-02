@@ -1,22 +1,22 @@
+use bitcoin::secp256k1::SecretKey;
 use bitcoin::{
+    Address, Network,
     address::NetworkUnchecked,
     key::{CompressedPublicKey, PrivateKey, Secp256k1},
-    Address, Network, PublicKey,
 };
-use bitcoin::secp256k1::SecretKey;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use rand::{rngs::OsRng, RngCore};
+use rand::{RngCore, rngs::OsRng};
 use ratatui::{
+    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
-    Frame, Terminal,
+    widgets::{Block, Borders, Clear, Paragraph},
 };
 use std::{error::Error, fmt, io, time::Duration};
 
@@ -32,7 +32,10 @@ impl DemoNetwork {
     const ALL: [Self; 4] = [Self::Testnet, Self::Testnet4, Self::Signet, Self::Regtest];
 
     fn next(self) -> Self {
-        let idx = Self::ALL.iter().position(|network| *network == self).unwrap_or(0);
+        let idx = Self::ALL
+            .iter()
+            .position(|network| *network == self)
+            .unwrap_or(0);
         Self::ALL[(idx + 1) % Self::ALL.len()]
     }
 
@@ -43,6 +46,18 @@ impl DemoNetwork {
             Self::Signet => Network::Signet,
             Self::Regtest => Network::Regtest,
         }
+    }
+
+    fn bech32_hrp(self) -> &'static str {
+        match self {
+            Self::Regtest => "bcrt",
+            Self::Testnet | Self::Testnet4 | Self::Signet => "tb",
+        }
+    }
+
+    fn wif_prefix(self) -> &'static str {
+        let _ = self;
+        "0xef"
     }
 }
 
@@ -64,12 +79,13 @@ struct App {
     cursor: usize,
     /// Selected safe Bitcoin network profile
     network: DemoNetwork,
+    /// Whether the help popup is visible
+    show_help: bool,
     /// Whether the app should quit
     should_quit: bool,
 }
 
 struct DerivedIdentity {
-    public_key: PublicKey,
     address: Address,
     wif: String,
     wif_roundtrip_ok: bool,
@@ -83,6 +99,7 @@ impl App {
             bits: [0u8; 32],
             cursor: 0,
             network: DemoNetwork::Testnet,
+            show_help: false,
             should_quit: false,
         }
     }
@@ -136,15 +153,14 @@ impl App {
             .map_err(|err| format!("could not compress public key: {err}"))?;
         let address = Address::p2wpkh(&compressed_public_key, self.network.as_bitcoin_network());
         let wif = private_key.to_wif();
-        let parsed_wif = PrivateKey::from_wif(&wif)
-            .map_err(|err| format!("WIF roundtrip failed: {err}"))?;
+        let parsed_wif =
+            PrivateKey::from_wif(&wif).map_err(|err| format!("WIF roundtrip failed: {err}"))?;
         let parsed_address: Address<NetworkUnchecked> = address
             .to_string()
             .parse()
             .map_err(|err| format!("address roundtrip failed: {err}"))?;
 
         Ok(DerivedIdentity {
-            public_key,
             address: address.clone(),
             wif,
             wif_roundtrip_ok: parsed_wif.inner == private_key.inner
@@ -178,6 +194,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         KeyCode::Char(' ') => app.toggle_bit(),
                         KeyCode::Char('r') => app.randomize_bits(),
                         KeyCode::Char('c') => app.clear_bits(),
+                        KeyCode::Char('?') => app.show_help = !app.show_help,
                         KeyCode::Char('\\') => app.cycle_network(),
                         KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
                         KeyCode::Right | KeyCode::Char('l') => app.move_cursor(1, 0),
@@ -207,7 +224,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         .constraints([
             Constraint::Length(3),
             Constraint::Min(16),
-            Constraint::Length(7),
+            Constraint::Length(8),
         ])
         .split(f.size());
 
@@ -219,11 +236,17 @@ fn ui(f: &mut Frame, app: &mut App) {
     );
     let header = Paragraph::new(header_text)
         .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )
         .block(Block::default().borders(Borders::ALL).title(" Overview "));
     f.render_widget(header, chunks[0]);
 
-    let grid_block = Block::default().borders(Borders::ALL).title(" 16x16 Bit Grid (256 Bits) ");
+    let grid_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" 16x16 Bit Grid (256 Bits) ");
     let inner_grid_area = grid_block.inner(chunks[1]);
     f.render_widget(grid_block, chunks[1]);
 
@@ -265,43 +288,123 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
-    let controls = " [\\] Cycle network | [Space] Toggle | [r] Randomize valid secret | [c] Clear | [q] Quit ";
+    let controls =
+        " [\\] Cycle network | [Space] Toggle | [r] Randomize valid secret | [c] Clear | [q] Quit ";
     let footer_lines = match derived {
         Ok(identity) => vec![
             Line::from(vec![
-                Span::styled("SECRET: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "SECRET: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(hex_str, Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
-                Span::styled("WIF: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "WIF: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(identity.wif, Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
-                Span::styled("ADDR: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-                Span::styled(identity.address.to_string(), Style::default().fg(Color::White)),
+                Span::styled(
+                    "ADDR: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    identity.address.to_string(),
+                    Style::default().fg(Color::White),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("VERIFY: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "VERIFY: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(
                     format!(
                         "pubkey {} | WIF {} | address {}",
-                        if identity.pubkey_match_ok { "ok" } else { "fail" },
-                        if identity.wif_roundtrip_ok { "ok" } else { "fail" },
-                        if identity.address_roundtrip_ok { "ok" } else { "fail" }
+                        if identity.pubkey_match_ok {
+                            "ok"
+                        } else {
+                            "fail"
+                        },
+                        if identity.wif_roundtrip_ok {
+                            "ok"
+                        } else {
+                            "fail"
+                        },
+                        if identity.address_roundtrip_ok {
+                            "ok"
+                        } else {
+                            "fail"
+                        }
                     ),
                     Style::default().fg(Color::Green),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "MORE INFO: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(
+                        "entropy 256 bits | network core arg {} | bech32 {} | WIF {} | addr p2wpkh",
+                        app.network.as_bitcoin_network().to_core_arg(),
+                        app.network.bech32_hrp(),
+                        app.network.wif_prefix()
+                    ),
+                    Style::default().fg(Color::White),
                 ),
             ]),
             Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
         ],
         Err(err) => vec![
             Line::from(vec![
-                Span::styled("SECRET: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "SECRET: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(hex_str, Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
-                Span::styled("VERIFY: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    "VERIFY: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled(err, Style::default().fg(Color::Red)),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "MORE INFO: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!(
+                        "entropy 256 bits | network core arg {} | bech32 {} | WIF {} | addr p2wpkh",
+                        app.network.as_bitcoin_network().to_core_arg(),
+                        app.network.bech32_hrp(),
+                        app.network.wif_prefix()
+                    ),
+                    Style::default().fg(Color::White),
+                ),
             ]),
             Line::from(Span::styled(controls, Style::default().fg(Color::DarkGray))),
         ],
@@ -309,8 +412,59 @@ fn ui(f: &mut Frame, app: &mut App) {
 
     let footer = Paragraph::new(footer_lines)
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL).title(" Verification "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Verification "),
+        );
     f.render_widget(footer, chunks[2]);
+
+    if app.show_help {
+        let area = centered_rect(70, 55, f.size());
+        f.render_widget(Clear, area);
+
+        let help = Paragraph::new(vec![
+            Line::from(" HELP "),
+            Line::from(""),
+            Line::from(" ?      Toggle this help panel "),
+            Line::from(" \\      Cycle testnet / testnet4 / signet / regtest "),
+            Line::from(" r      Randomize the grid with a valid secure secret "),
+            Line::from(" c      Clear the grid "),
+            Line::from(" Space  Flip the selected bit "),
+            Line::from(" hjkl   Move the cursor "),
+            Line::from(" q/Esc  Quit "),
+            Line::from(""),
+            Line::from(" Footer info shows the WIF, address, and roundtrip verification. "),
+        ])
+        .block(Block::default().borders(Borders::ALL).title(" Help "))
+        .alignment(Alignment::Left)
+        .style(Style::default().fg(Color::White));
+        f.render_widget(help, area);
+    }
+}
+
+fn centered_rect(
+    percent_x: u16,
+    percent_y: u16,
+    area: ratatui::layout::Rect,
+) -> ratatui::layout::Rect {
+    let vertical = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(area);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(vertical[1])[1]
 }
 
 #[cfg(test)]
