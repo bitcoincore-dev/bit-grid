@@ -329,7 +329,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         .constraints([
             Constraint::Length(3),
             Constraint::Min(16),
-            Constraint::Length(3),
+            Constraint::Length(4),
         ])
         .split(f.size());
 
@@ -406,6 +406,15 @@ fn ui(f: &mut Frame, app: &mut App) {
             ]),
             Line::from(vec![
                 Span::styled(
+                    "WIF: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(identity.wif, Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![
+                Span::styled(
                     "ADDR: ",
                     Style::default()
                         .fg(Color::Yellow)
@@ -443,6 +452,15 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
+            ]),
+            Line::from(vec![
+                Span::styled(
+                    "WIF: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("n/a", Style::default().fg(Color::DarkGray)),
             ]),
             Line::from(vec![
                 Span::styled(
