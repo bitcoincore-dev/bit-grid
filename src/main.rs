@@ -328,7 +328,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         .margin(1)
         .constraints([
             Constraint::Length(3),
-            Constraint::Min(16),
+            Constraint::Length(18),
             Constraint::Length(4),
         ])
         .split(f.size());
