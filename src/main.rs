@@ -391,7 +391,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         grid_lines.push(Line::from(spans));
     }
 
-    let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
+    let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Left);
     f.render_widget(grid_paragraph, inner_grid_area);
 
     let raw_binary = format_binary(&app.bits);
