@@ -287,7 +287,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         KeyCode::Char('a') => app.cycle_art(),
                         KeyCode::Char('?') => app.show_help = !app.show_help,
                         KeyCode::Tab => app.cycle_network(),
-                        KeyCode::Char('\\') | KeyCode::Char('|') => app.toggle_info(),
+                        KeyCode::Char('\\') | KeyCode::Char('|') | KeyCode::Char('i') => {
+                            app.toggle_info()
+                        }
                         KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
                         KeyCode::Right | KeyCode::Char('l') => app.move_cursor(1, 0),
                         KeyCode::Up | KeyCode::Char('k') => app.move_cursor(0, -1),
@@ -323,8 +325,13 @@ fn ui(f: &mut Frame, app: &mut App) {
     let byte_idx = app.cursor / 8;
     let bit_idx = 7 - (app.cursor % 8);
     let header_text = format!(
-        " BIT GRID | Network: {} | Art: {} | Selected Bit: {} (Byte {}, Bit {}) ",
-        app.network, app.art, app.cursor, byte_idx, bit_idx
+        " BIT GRID | Network: {} | Art: {} | Info: {} | Selected Bit: {} (Byte {}, Bit {}) ",
+        app.network,
+        app.art,
+        if app.show_info { "on" } else { "off" },
+        app.cursor,
+        byte_idx,
+        bit_idx
     );
     let header = Paragraph::new(header_text)
         .alignment(Alignment::Center)
@@ -553,7 +560,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from(" SHORTCUTS "),
             Line::from("  ?      Toggle this help panel "),
             Line::from("  Tab    Cycle network profile "),
-            Line::from("  \\ / |  Toggle extra info "),
+            Line::from("  \\ / | / i  Toggle extra info "),
             Line::from("  r      Randomize a valid secret "),
             Line::from("  f      Fill the entire grid "),
             Line::from("  c      Clear the grid "),
