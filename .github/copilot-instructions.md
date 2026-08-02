@@ -14,7 +14,7 @@
 - `src/main.rs` contains the whole app: terminal setup/teardown, event loop, app state, rendering, and tests.
 - `App` stores 256 bits as `[u8; 32]`, a cursor index, and quit state.
 - The UI renders a 16x16 bit grid, a header with the selected bit, and a footer with the hex state, WIF/address verification, and extra network metadata.
-- Input is handled in the main loop with polling; `q`/`Esc` quit, arrow keys or `hjkl` move, space toggles, `r` randomizes a valid test-network secret, `f` fills the entire grid, `c` clears, `\` cycles testnet/testnet4/signet/regtest, and `?` opens the help popup.
+- Input is handled in the main loop with polling; `q`/`Esc` quit, arrow keys or `hjkl` move, space toggles, `r` randomizes a valid test-network secret, `f` fills the entire grid, `c` clears, `Tab` cycles testnet/testnet4/signet/regtest, `\` toggles extra info, and `?` opens the help popup.
 - The help popup is intentionally BIP39-style: it explains entropy, key-type flow, and derivation-path context without generating mnemonics or touching mainnet.
 
 ## Key conventions
