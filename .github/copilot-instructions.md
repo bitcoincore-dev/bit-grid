@@ -13,13 +13,14 @@
 - This is a single-binary Rust TUI built with `crossterm` + `ratatui`.
 - `src/main.rs` contains the whole app: terminal setup/teardown, event loop, app state, rendering, and tests.
 - `App` stores 256 bits as `[u8; 32]`, a cursor index, and quit state.
-- The UI renders a 16x16 bit grid, a header with the selected bit, and a footer with the hex state plus keybindings.
-- Input is handled in the main loop with polling; `q`/`Esc` quit, arrow keys or `hjkl` move, space toggles, `r` randomizes, and `c` clears.
+- The UI renders a 16x16 bit grid, a header with the selected bit, and a footer with the hex state, WIF/address verification, and extra network metadata.
+- Input is handled in the main loop with polling; `q`/`Esc` quit, arrow keys or `hjkl` move, space toggles, `r` randomizes a valid test-network secret, `c` clears, `\` cycles testnet/testnet4/signet/regtest, and `?` opens the help popup.
 
 ## Key conventions
 
 - Bit indexing is big-endian within each byte: `bit_idx = 7 - (cursor % 8)`.
 - The cursor maps linearly to the grid as `row * 16 + col`; keep that mapping consistent when changing rendering or movement.
 - Randomization should use OS-backed randomness (`OsRng`) rather than a deterministic PRNG.
+- Key derivation is intentionally restricted to safe Bitcoin networks only; the UI should continue to avoid mainnet generation.
 - Terminal setup uses raw mode and the alternate screen; any future control-flow changes should preserve clean teardown.
 - The crate is intentionally minimal: avoid adding extra modules or abstractions unless the app grows beyond a single-file TUI.
