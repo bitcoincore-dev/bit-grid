@@ -354,6 +354,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 fn ui(f: &mut Frame, app: &mut App) {
     let derived = app.derived_identity();
     let hex_str: String = app.bits.iter().map(|b| format!("{:02x}", b)).collect();
+    let checksum_bits = bip39_checksum_bits(&app.bits);
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -439,7 +440,11 @@ fn ui(f: &mut Frame, app: &mut App) {
     let raw_panel = Paragraph::new(raw_binary.clone())
         .alignment(Alignment::Left)
         .wrap(Wrap { trim: false })
-        .block(Block::default().borders(Borders::ALL).title(" RAW "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(" RAW | Checksum: {} ", checksum_bits)),
+        );
     f.render_widget(raw_panel, right_chunks[0]);
 
     let secret_panel = Paragraph::new(hex_str.clone())
