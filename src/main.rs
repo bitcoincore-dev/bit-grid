@@ -350,11 +350,16 @@ fn ui(f: &mut Frame, app: &mut App) {
         .block(Block::default().borders(Borders::ALL).title(" BIT GRID "));
     f.render_widget(header, chunks[0]);
 
+    let body_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(42), Constraint::Min(24)])
+        .split(chunks[1]);
+
     let grid_block = Block::default()
         .borders(Borders::ALL)
         .title(" 16x16 Bit Grid (256 Bits) ");
-    let inner_grid_area = grid_block.inner(chunks[1]);
-    f.render_widget(grid_block, chunks[1]);
+    let inner_grid_area = grid_block.inner(body_chunks[0]);
+    f.render_widget(grid_block, body_chunks[0]);
 
     let mut grid_lines = Vec::new();
     for row in 0..16 {
@@ -395,6 +400,20 @@ fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(grid_paragraph, inner_grid_area);
 
     let raw_binary = format_binary(&app.bits);
+    let raw_panel = Paragraph::new(vec![Line::from(vec![
+        Span::styled(
+            "RAW: ",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(raw_binary.clone(), Style::default().fg(Color::White)),
+    ])])
+    .alignment(Alignment::Left)
+    .wrap(Wrap { trim: false })
+    .block(Block::default().borders(Borders::ALL).title(" RAW "));
+    f.render_widget(raw_panel, body_chunks[1]);
+
     let current_state_lines = match &derived {
         Ok(_identity) => vec![
             Line::from(vec![
@@ -406,18 +425,6 @@ fn ui(f: &mut Frame, app: &mut App) {
                 ),
                 Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
             ]),
-            Line::from(vec![
-                Span::styled(
-                    "RAW: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(
-                    raw_binary.clone(),
-                    Style::default().fg(Color::White),
-                ),
-            ]),
         ],
         Err(_err) => vec![
             Line::from(vec![
@@ -428,15 +435,6 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
-            ]),
-            Line::from(vec![
-                Span::styled(
-                    "RAW: ",
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::styled(raw_binary.clone(), Style::default().fg(Color::White)),
             ]),
         ],
     };
