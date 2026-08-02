@@ -561,7 +561,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from("  hjkl   Move the cursor "),
             Line::from("  Esc    Close help "),
             Line::from("  q      Quit "),
-        ]);
+        ])
         .block(Block::default().borders(Borders::ALL).title(" Help "))
         .alignment(Alignment::Left)
         .style(Style::default().fg(Color::White));
