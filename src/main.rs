@@ -393,7 +393,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
-    let current_state_lines = match derived {
+    let current_state_lines = match &derived {
         Ok(identity) => vec![
             Line::from(vec![
                 Span::styled(
@@ -460,7 +460,7 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(err, Style::default().fg(Color::Red)),
+                Span::styled(err.clone(), Style::default().fg(Color::Red)),
             ]),
         ],
     };
