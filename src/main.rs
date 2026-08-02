@@ -28,6 +28,45 @@ enum DemoNetwork {
     Regtest,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum BitArt {
+    Checker,
+    Border,
+    X,
+    Diamond,
+    Plus,
+    Diagonal,
+}
+
+impl BitArt {
+    const ALL: [Self; 6] = [
+        Self::Checker,
+        Self::Border,
+        Self::X,
+        Self::Diamond,
+        Self::Plus,
+        Self::Diagonal,
+    ];
+
+    fn next(self) -> Self {
+        let idx = Self::ALL.iter().position(|art| *art == self).unwrap_or(0);
+        Self::ALL[(idx + 1) % Self::ALL.len()]
+    }
+}
+
+impl fmt::Display for BitArt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Checker => "checker",
+            Self::Border => "border",
+            Self::X => "x",
+            Self::Diamond => "diamond",
+            Self::Plus => "plus",
+            Self::Diagonal => "diagonal",
+        })
+    }
+}
+
 impl DemoNetwork {
     const ALL: [Self; 4] = [Self::Testnet, Self::Testnet4, Self::Signet, Self::Regtest];
 
@@ -79,6 +118,8 @@ struct App {
     cursor: usize,
     /// Selected safe Bitcoin network profile
     network: DemoNetwork,
+    /// Current art preset
+    art: BitArt,
     /// Whether the help popup is visible
     show_help: bool,
     /// Whether the app should quit
@@ -99,6 +140,7 @@ impl App {
             bits: [0u8; 32],
             cursor: 0,
             network: DemoNetwork::Testnet,
+            art: BitArt::Checker,
             show_help: false,
             should_quit: false,
         }
@@ -125,6 +167,41 @@ impl App {
 
     fn fill_bits(&mut self) {
         self.bits = [0xff; 32];
+    }
+
+    fn cycle_art(&mut self) {
+        self.art = self.art.next();
+        self.apply_art();
+    }
+
+    fn apply_art(&mut self) {
+        self.bits = [0u8; 32];
+        for row in 0..16 {
+            for col in 0..16 {
+                if self.art_bit(row, col) {
+                    let bit_flat_idx = row * 16 + col;
+                    let b_idx = bit_flat_idx / 8;
+                    let bit_idx = 7 - (bit_flat_idx % 8);
+                    self.bits[b_idx] |= 1 << bit_idx;
+                }
+            }
+        }
+    }
+
+    fn art_bit(&self, row: usize, col: usize) -> bool {
+        let row = row as i32;
+        let col = col as i32;
+        match self.art {
+            BitArt::Checker => (row + col) % 2 == 0,
+            BitArt::Border => row == 0 || row == 15 || col == 0 || col == 15,
+            BitArt::X => row == col || row + col == 15,
+            BitArt::Diamond => {
+                let center = 7_i32;
+                (row - center).abs() + (col - center).abs() <= 5
+            }
+            BitArt::Plus => row == 7 || row == 8 || col == 7 || col == 8,
+            BitArt::Diagonal => (row + col) % 4 == 0 || (row + col) % 4 == 1,
+        }
     }
 
     fn cycle_network(&mut self) {
@@ -199,6 +276,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         KeyCode::Char('r') => app.randomize_bits(),
                         KeyCode::Char('c') => app.clear_bits(),
                         KeyCode::Char('f') => app.fill_bits(),
+                        KeyCode::Char('a') => app.cycle_art(),
                         KeyCode::Char('?') => app.show_help = !app.show_help,
                         KeyCode::Char('\\') => app.cycle_network(),
                         KeyCode::Left | KeyCode::Char('h') => app.move_cursor(-1, 0),
@@ -236,8 +314,8 @@ fn ui(f: &mut Frame, app: &mut App) {
     let byte_idx = app.cursor / 8;
     let bit_idx = 7 - (app.cursor % 8);
     let header_text = format!(
-        " BIT GRID | Network: {} | Selected Bit: {} (Byte {}, Bit {}) ",
-        app.network, app.cursor, byte_idx, bit_idx
+        " BIT GRID | Network: {} | Art: {} | Selected Bit: {} (Byte {}, Bit {}) ",
+        app.network, app.art, app.cursor, byte_idx, bit_idx
     );
     let header = Paragraph::new(header_text)
         .alignment(Alignment::Center)
@@ -294,7 +372,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(grid_paragraph, inner_grid_area);
 
     let controls =
-        " [\\] Cycle network | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ";
+        " [\\] Cycle network | [a] Art cycle | [Space] Toggle | [r] Randomize | [f] Fill | [c] Clear | [q] Quit ";
     let footer_lines = match derived {
         Ok(identity) => vec![
             Line::from(vec![
