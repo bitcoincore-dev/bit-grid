@@ -125,10 +125,10 @@ impl DemoNetwork {
 impl fmt::Display for DemoNetwork {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Self::Testnet => "testnet",
-            Self::Testnet4 => "testnet4",
-            Self::Signet => "signet",
-            Self::Regtest => "regtest",
+            Self::Testnet => "TESTNET",
+            Self::Testnet4 => "TESTNET4",
+            Self::Signet => "SIGNET",
+            Self::Regtest => "REGTEST",
         })
     }
 }
@@ -368,7 +368,7 @@ fn ui(f: &mut Frame, app: &mut App) {
     let byte_idx = app.cursor / 8;
     let bit_idx = 7 - (app.cursor % 8);
     let header_text = format!(
-        " BIT GRID | Network: {} | Selected Bit: {} (Byte {}, Bit {}) ",
+        " BIT GRID | {} | Selected Bit: {} (Byte {}, Bit {}) ",
         app.network, app.cursor, byte_idx, bit_idx
     );
     let header = Paragraph::new(header_text)
@@ -508,7 +508,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from("  Derivation Paths: BIP32, BIP44, BIP49, BIP84, BIP141 "),
             Line::from(""),
             Line::from(" CURRENT "),
-            Line::from(format!("  Network: {}", app.network)),
+            Line::from(format!("  {}", app.network)),
             Line::from(format!("  Address: {}", address_text)),
             Line::from(format!("  WIF: {}", wif_text)),
             Line::from(format!("  WIF prefix: {}", app.network.wif_prefix())),
