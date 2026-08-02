@@ -387,7 +387,9 @@ fn ui(f: &mut Frame, app: &mut App) {
     let grid_paragraph = Paragraph::new(grid_lines).alignment(Alignment::Center);
     f.render_widget(grid_paragraph, inner_grid_area);
 
-    let info_block = Block::default().borders(Borders::ALL).title(" Current State ");
+    let info_block = Block::default()
+        .borders(Borders::ALL)
+        .title(" Current State ");
     let info_area = info_block.inner(body_chunks[1]);
     f.render_widget(info_block, body_chunks[1]);
 
@@ -400,10 +402,7 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    hex_str,
-                    Style::default().fg(Color::White),
-                ),
+                Span::styled(hex_str, Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
                 Span::styled(
@@ -412,10 +411,7 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(
-                    identity.wif,
-                    Style::default().fg(Color::White),
-                ),
+                Span::styled(identity.wif, Style::default().fg(Color::White)),
             ]),
             if app.show_info {
                 Line::from(vec![
@@ -534,40 +530,44 @@ fn ui(f: &mut Frame, app: &mut App) {
             },
             Line::from(vec![
                 Span::styled(
-                        "ADDR: ",
+                    "ADDR: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                    Span::styled("invalid secret", Style::default().fg(Color::Red)),
+                Span::styled("invalid secret", Style::default().fg(Color::Red)),
             ]),
             Line::from(vec![
-                    Span::styled(
-                        "VERIFY: ",
-                        Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled("n/a", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    "VERIFY: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled("n/a", Style::default().fg(Color::DarkGray)),
             ]),
             Line::from(vec![
-                    Span::styled(
-                        "PATHS: ",
-                        Style::default()
-                            .fg(Color::Yellow)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled(
-                        "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
-                        Style::default().fg(Color::White),
-                    ),
+                Span::styled(
+                    "PATHS: ",
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    "BIP32 root -> BIP44/BIP49/BIP84-style derivations; demo keeps only a raw 256-bit secret",
+                    Style::default().fg(Color::White),
+                ),
             ]),
         ],
     };
 
     let info_panel = Paragraph::new(info_lines)
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL).title(" Current State "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Current State "),
+        );
     f.render_widget(info_panel, info_area);
 
     let footer = Paragraph::new(vec![Line::from(Span::styled(
@@ -577,6 +577,45 @@ fn ui(f: &mut Frame, app: &mut App) {
     .alignment(Alignment::Center)
     .block(Block::default().borders(Borders::ALL).title(" Controls "));
     f.render_widget(footer, chunks[2]);
+
+    if app.show_info {
+        let area = centered_rect(86, 78, f.size());
+        f.render_widget(Clear, area);
+
+        let modal = Paragraph::new(vec![
+            Line::from(" ENTROPY "),
+            Line::from("  Type: hexadecimal "),
+            Line::from("  Time To Crack: centuries "),
+            Line::from("  Event Count: 64 "),
+            Line::from("  Avg Bits/Event: 4.00 "),
+            Line::from("  Raw Entropy Words: 24 "),
+            Line::from("  Total Bits: 256 "),
+            Line::from(format!("  Filtered Entropy: {}", hex_str)),
+            Line::from(""),
+            Line::from(" KEY / WALLET "),
+            Line::from("  Mnemonic Length: 24 "),
+            Line::from("  PBKDF2 rounds: 2048 "),
+            Line::from("  Coin: testnet / testnet4 / signet / regtest "),
+            Line::from("  Derivation Paths: BIP32, BIP44, BIP49, BIP84, BIP141 "),
+            Line::from(""),
+            Line::from(" CURRENT "),
+            Line::from(format!("  Network: {}", app.network)),
+            Line::from(format!("  Art: {}", app.art)),
+            Line::from(format!("  Selected bit: {}", app.cursor)),
+            Line::from(format!("  WIF prefix: {}", app.network.wif_prefix())),
+            Line::from(format!("  Bech32 HRP: {}", app.network.bech32_hrp())),
+            Line::from(""),
+            Line::from("  Press \\ to close this panel. "),
+        ])
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Current State "),
+        )
+        .alignment(Alignment::Left)
+        .style(Style::default().fg(Color::White));
+        f.render_widget(modal, area);
+    }
 
     if app.show_help {
         let area = centered_rect(82, 76, f.size());
