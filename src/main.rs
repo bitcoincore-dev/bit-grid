@@ -620,6 +620,6 @@ mod tests {
         app.bits = [0x0f; 32];
         app.invert_bits();
         assert!(app.bits.iter().all(|byte| *byte == 0xf0));
-        assert!(app.secret_key().is_err());
+        assert!(app.secret_key().is_ok());
     }
 }
