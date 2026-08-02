@@ -402,7 +402,7 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(hex_str, Style::default().fg(Color::White)),
+                Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
                 Span::styled(
@@ -496,7 +496,7 @@ fn ui(f: &mut Frame, app: &mut App) {
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
                 ),
-                Span::styled(hex_str, Style::default().fg(Color::White)),
+                Span::styled(hex_str.clone(), Style::default().fg(Color::White)),
             ]),
             Line::from(vec![
                 Span::styled(
