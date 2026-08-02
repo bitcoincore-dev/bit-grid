@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2024"
 
 [dependencies]
-crossterm = "0.27"
 bitcoin = "0.32"
-ratatui = "0.26"
+crossterm = "0.27"
 rand = "0.8"
+ratatui = "0.26"
