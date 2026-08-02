@@ -17,7 +17,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, Paragraph},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 use std::{error::Error, fmt, io, time::Duration};
 
@@ -330,7 +330,7 @@ fn ui(f: &mut Frame, app: &mut App) {
         .constraints([
             Constraint::Length(3),
             Constraint::Length(18),
-            Constraint::Length(4),
+            Constraint::Length(6),
         ])
         .split(f.size());
 
@@ -408,7 +408,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    "RAW BINARY: ",
+                    "RAW: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
@@ -431,7 +431,7 @@ fn ui(f: &mut Frame, app: &mut App) {
             ]),
             Line::from(vec![
                 Span::styled(
-                    "RAW BINARY: ",
+                    "RAW: ",
                     Style::default()
                         .fg(Color::Yellow)
                         .add_modifier(Modifier::BOLD),
@@ -443,6 +443,7 @@ fn ui(f: &mut Frame, app: &mut App) {
 
     let state_footer = Paragraph::new(current_state_lines)
         .alignment(Alignment::Left)
+        .wrap(Wrap { trim: false })
         .block(Block::default().borders(Borders::ALL).title(" Current State "));
     f.render_widget(state_footer, chunks[2]);
 

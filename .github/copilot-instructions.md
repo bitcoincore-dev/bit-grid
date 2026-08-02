@@ -13,7 +13,7 @@
 - This is a single-binary Rust TUI built with `crossterm` + `ratatui`.
 - `src/main.rs` contains the whole app: terminal setup/teardown, event loop, app state, rendering, and tests.
 - `App` stores 256 bits as `[u8; 32]`, a cursor index, and quit state.
-- The UI renders a 16x16 bit grid, a header with the selected bit, a bottom Current State footer with the hex/address/verify summary, and an optional extra-info modal that includes WIF.
+- The UI renders a 16x16 bit grid, a header with the selected bit, a bottom Current State footer with the secret/raw-binary summary, and an optional extra-info modal that includes WIF, address, and entropy breakdown.
 - Input is handled in the main loop with polling; `q` quits, `Esc` closes help when open, arrow keys or `hjkl` move, space toggles, `r` randomizes a valid test-network secret, `f` fills the entire grid, `c` clears, `Tab` cycles testnet/testnet4/signet/regtest, and `\`/`|`/`i` toggles the extra-info modal; `?` opens the help popup.
 - The help popup is intentionally BIP39-style: it explains entropy, key-type flow, and derivation-path context without generating mnemonics or touching mainnet.
 
@@ -23,6 +23,6 @@
 - The cursor maps linearly to the grid as `row * 16 + col`; keep that mapping consistent when changing rendering or movement.
 - Randomization should use OS-backed randomness (`OsRng`) rather than a deterministic PRNG.
 - Key derivation is intentionally restricted to safe Bitcoin networks only; the UI should continue to avoid mainnet generation.
-- The bottom footer should keep showing verification status plus a compact derivation summary; the popup should carry the longer explanatory text, WIF, and the controls legend.
+- The bottom footer should keep showing the secret and raw-binary summary; the popup should carry the longer explanatory text, WIF, address, and the controls legend.
 - Terminal setup uses raw mode and the alternate screen; any future control-flow changes should preserve clean teardown.
 - The crate is intentionally minimal: avoid adding extra modules or abstractions unless the app grows beyond a single-file TUI.
