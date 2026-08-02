@@ -3,9 +3,10 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use rand::{rngs::OsRng, RngCore};
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
@@ -38,9 +39,7 @@ impl App {
     }
 
     fn randomize_bits(&mut self) {
-        for byte in self.bits.iter_mut() {
-            *byte = rand_simple();
-        }
+        OsRng.fill_bytes(&mut self.bits);
     }
 
     fn clear_bits(&mut self) {
@@ -56,15 +55,6 @@ impl App {
 
         self.cursor = (new_row * 16 + new_col) as usize;
     }
-}
-
-/// Simple LCG randomizer to avoid adding additional crates
-fn rand_simple() -> u8 {
-    use std::sync::atomic::{AtomicU32, Ordering};
-    static SEED: AtomicU32 = AtomicU32::new(0xDEAD_BEEF);
-    let old = SEED.fetch_add(0x4519_3571, Ordering::Relaxed);
-    let state = old.wrapping_mul(1103515245).wrapping_add(12345);
-    (state >> 16) as u8
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
