@@ -169,8 +169,10 @@ impl App {
         self.bits = [0u8; 32];
     }
 
-    fn fill_bits(&mut self) {
-        self.bits = [0xff; 32];
+    fn invert_bits(&mut self) {
+        for byte in &mut self.bits {
+            *byte = !*byte;
+        }
     }
 
     fn cycle_art(&mut self) {
@@ -294,7 +296,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                             KeyCode::Char(' ') => app.toggle_bit(),
                             KeyCode::Char('r') => app.randomize_bits(),
                             KeyCode::Char('c') => app.clear_bits(),
-                            KeyCode::Char('f') => app.fill_bits(),
+                            KeyCode::Char('f') => app.invert_bits(),
                             KeyCode::Char('a') => app.cycle_art(),
                             KeyCode::Char('?') => app.show_help = !app.show_help,
                             KeyCode::Tab => app.cycle_network(),
@@ -488,8 +490,8 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from("  Tab    Cycle network profile "),
             Line::from("  \\ / | / i  Toggle extra info "),
             Line::from("  r      Randomize a valid secret "),
-            Line::from("  f      Fill the entire grid "),
             Line::from("  c      Clear the grid "),
+            Line::from("  f      Flip all bits "),
             Line::from("  a      Cycle bit matrix art presets "),
             Line::from("  Space  Flip the selected bit "),
             Line::from("  hjkl   Move the cursor "),
@@ -532,8 +534,8 @@ fn ui(f: &mut Frame, app: &mut App) {
             Line::from("  Tab    Cycle network profile "),
             Line::from("  \\ / | / i  Toggle extra info "),
             Line::from("  r      Randomize a valid secret "),
-            Line::from("  f      Fill the entire grid "),
             Line::from("  c      Clear the grid "),
+            Line::from("  f      Flip all bits "),
             Line::from("  Space  Flip the selected bit "),
             Line::from("  hjkl   Move the cursor "),
             Line::from("  Esc    Close help "),
@@ -613,10 +615,11 @@ mod tests {
     }
 
     #[test]
-    fn fill_bits_fills_entire_grid() {
+    fn invert_bits_flips_entire_grid() {
         let mut app = App::new();
-        app.fill_bits();
-        assert!(app.bits.iter().all(|byte| *byte == 0xff));
+        app.bits = [0x0f; 32];
+        app.invert_bits();
+        assert!(app.bits.iter().all(|byte| *byte == 0xf0));
         assert!(app.secret_key().is_err());
     }
 }
