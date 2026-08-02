@@ -400,11 +400,22 @@ fn ui(f: &mut Frame, app: &mut App) {
     f.render_widget(grid_paragraph, inner_grid_area);
 
     let raw_binary = format_binary(&app.bits);
+    let right_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(64), Constraint::Percentage(36)])
+        .split(body_chunks[1]);
+
     let raw_panel = Paragraph::new(raw_binary.clone())
-    .alignment(Alignment::Left)
-    .wrap(Wrap { trim: false })
-    .block(Block::default().borders(Borders::ALL).title(" RAW "));
-    f.render_widget(raw_panel, body_chunks[1]);
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: false })
+        .block(Block::default().borders(Borders::ALL).title(" RAW "));
+    f.render_widget(raw_panel, right_chunks[0]);
+
+    let secret_panel = Paragraph::new(hex_str.clone())
+        .alignment(Alignment::Left)
+        .wrap(Wrap { trim: false })
+        .block(Block::default().borders(Borders::ALL).title(" SECRET "));
+    f.render_widget(secret_panel, right_chunks[1]);
 
     let current_state_lines = match &derived {
         Ok(_identity) => vec![
